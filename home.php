@@ -1,44 +1,142 @@
 <style>
-    .car-cover{
-        width:10em;
+    #cover-img{
+        object-fit:cover;
+        object-position:center center;
+        width: 100%;
+        height: 100%;
     }
-    .car-item .col-auto{
-        max-width: calc(100% - 12em) !important;
+    .fc-event-title-container{
+        text-align:center;
     }
-    .car-item:hover{
-        transform:translate(0, -4px);
-        background:#a5a5a521;
-    }
-    .banner-img-holder{
-        height:25vh !important;
-        width: calc(100%);
-        overflow: hidden;
-    }
-    .banner-img{
-        object-fit:scale-down;
-        height: calc(100%);
-        width: calc(100%);
-        transition:transform .3s ease-in;
-    }
-    .car-item:hover .banner-img{
-        transform:scale(1.3)
-    }
-    .welcome-content img{
-        margin:.5em;
+    .fc-event-title.fc-sticky{
+        font-size:2em;
     }
 </style>
-<div class="col-lg-12 py-5">
-    <div class="contain-fluid">
-        <div class="card card-outline card-lightblue shadow rounded-0">
-            <div class="card-body rounded-0">
-                <div class="container-fluid">
-                    <h3 class="text-center" style="font-size: 32px;">Welcome</h3>
-                    <hr>
-                    <div class="welcome-content">
-                        <?php include("welcome.html") ?>
-                    </div>
-                </div>
+<?php 
+$appointments = $conn->query("SELECT * FROM `appointment_list` where `status` in (0,1) and date(schedule) >= '".date("Y-m-d")."' ");
+$appoinment_arr = [];
+while($row = $appointments->fetch_assoc()){
+    if(!isset($appoinment_arr[$row['schedule']])) $appoinment_arr[$row['schedule']] = 0;
+    $appoinment_arr[$row['schedule']] += 1;
+}
+?>
+<!-- <h1>Welcome to <?php echo $_settings->info('name') ?> - Admin Panel</h1> -->
+<!-- <hr class="border-info"> -->
+<div class="row">
+    <div class="col-12 col-sm-12 col-md-6 col-lg-3">
+        <div class="info-box bg-gradient-light shadow">
+            <span class="info-box-icon bg-gradient-info elevation-1"><i class="fas fa-th-list"></i></span>
+
+            <div class="info-box-content">
+            <span class="info-box-text">Services</span>
+            <span class="info-box-number text-right">
+                <?php 
+                    echo $conn->query("SELECT * FROM `service_list` ")->num_rows;
+                ?>
+            </span>
             </div>
+            <!-- /.info-box-content -->
         </div>
+        <!-- /.info-box -->
+    </div>
+    <div class="col-12 col-sm-12 col-md-6 col-lg-3">
+        <div class="info-box bg-gradient-light shadow">
+            <span class="info-box-icon bg-gradient-primary elevation-1"><i class="fas fa-calendar-day"></i></span>
+
+            <div class="info-box-content">
+            <span class="info-box-text">Pending Request</span>
+            <span class="info-box-number text-right">
+                <?php 
+                    echo $conn->query("SELECT * FROM `appointment_list` where `status` = 0 ")->num_rows;
+                ?>
+            </span>
+            </div>
+            <!-- /.info-box-content -->
+        </div>
+        <!-- /.info-box -->
+    </div>
+    <div class="col-12 col-sm-12 col-md-6 col-lg-3">
+        <div class="info-box bg-gradient-light shadow">
+            <span class="info-box-icon bg-gradient-success elevation-1"><i class="fas fa-calendar-day"></i></span>
+
+            <div class="info-box-content">
+            <span class="info-box-text">Confirmed Request</span>
+            <span class="info-box-number text-right">
+                <?php 
+                    echo $conn->query("SELECT * FROM `appointment_list` where `status` = 1 ")->num_rows;
+                ?>
+            </span>
+            </div>
+            <!-- /.info-box-content -->
+        </div>
+        <!-- /.info-box -->
+    </div>
+    <div class="col-12 col-sm-12 col-md-6 col-lg-3">
+        <div class="info-box bg-gradient-light shadow">
+            <span class="info-box-icon bg-gradient-danger elevation-1"><i class="fas fa-calendar-day"></i></span>
+
+            <div class="info-box-content">
+            <span class="info-box-text">Cancelled Request</span>
+            <span class="info-box-number text-right">
+                <?php 
+                    echo $conn->query("SELECT * FROM `appointment_list` where `status` = 2 ")->num_rows;
+                ?>
+            </span>
+            </div>
+            <!-- /.info-box-content -->
+        </div>
+        <!-- /.info-box -->
     </div>
 </div>
+<hr>
+<div class="card card-outline card-primary rounded-0 shadow">
+    <div class="card-header rounded-0">
+            <h4 class="card-title">Appointment Requests</h4>
+    </div>
+    <div class="card-body">
+        <div id="appointmentCalendar"></div>
+    </div>
+</div>
+<script>
+    var calendar;
+    var appointment = $.parseJSON('<?= json_encode($appoinment_arr) ?>') || {};
+    start_loader();
+    $(function(){
+        var date = new Date()
+        var d    = date.getDate(),
+            m    = date.getMonth(),
+            y    = date.getFullYear()
+        var Calendar = FullCalendar.Calendar;
+
+        calendar = new Calendar(document.getElementById('appointmentCalendar'), {
+            headerToolbar: {
+                left  : false,
+                center: 'title',
+            },
+            selectable: true,
+            themeSystem: 'bootstrap',
+            //Random default events
+            events: [
+                {
+                    daysOfWeek: [0,1,2,3,4,5,6], // these recurrent events move separately
+                    title:0,
+                    allDay: true,
+                    }
+            ],
+            validRange:{
+                start: moment(date).format("YYYY-MM-DD"),
+            },
+            eventDidMount:function(info){
+                // console.log(appointment)
+                if(!!appointment[info.event.startStr]){
+                    var available = parseInt(info.event.title) + parseInt(appointment[info.event.startStr]);
+                     $(info.el).find('.fc-event-title.fc-sticky').text(available)
+                }
+                end_loader()
+            },
+            editable  : true
+        });
+
+    calendar.render();
+    })
+</script>
